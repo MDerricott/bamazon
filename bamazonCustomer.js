@@ -82,7 +82,7 @@ function start() {
                 connection.query("SELECT * FROM products", function (err, results) {
                    var getSql = function(){ 
                     stockQuanity = results[answer.purchaseId - 1].stock_quantity;
-                    total = answer.quantity * results[answer.purchaseId + 1].price;
+                    total = answer.quantity * results[answer.purchaseId - 1].price;
                     productName = results[answer.purchaseId - 1].product_name
                     fullfillOrder();
                 };
@@ -92,24 +92,25 @@ function start() {
        
             
         var updateInventory = function() {  
-            console.log("Updating") 
-            var newQuantity = stockQuanity - answer.quantity;
-            var idToFind = answer.purchaseId + 1
-            console.log("Stock: " + newQuantity);
-            console.log("ID: " + idToFind);
-            connection.query("UPDATE auctions SET ? WHERE ?", function (err, results) {
-                [
-                    {
-                        stock_quantity: stockQuanity
-                    },
-                    {
-                        id: idToFind
-                    }
+            var newQuantity = parseInt(stockQuanity - answer.quantity);
+            var idToFind = parseInt(answer.purchaseId);
+            console.log("New Stock Quantity: " + newQuantity);
+           
+            connection.query("UPDATE products SET ? WHERE ?",
+                [{
+                     stock_quantity: newQuantity
+                },
+                {
+                    id: idToFind
+                }
                   ],
-                  function(error) {
-                    if (error) throw err;
+                  function(error, res) {
+                    if (error) {throw err;}
+                    console.log(res.affectedRows)
                     console.log("Stock reduced!");
-                  };
+                    connection.end();
+               
+
             });
         };
             
@@ -118,10 +119,11 @@ function start() {
             if(answer.quantity < stockQuanity){
                 console.log("\nThank you for purchasing " + answer.quantity + " of the " + productName + "! Your total is: " + total);
                 updateInventory();
-            
              }
             else{
                  console.log( "Insufficient quantity!"); 
+                 connection.end();
+               
             }
             };
                   
