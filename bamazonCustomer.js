@@ -1,30 +1,26 @@
 var mysql = require("mysql");
 var inquirer = require("inquirer");
 
+
+// MYSQL connection setup
 var connection = mysql.createConnection({
     host: "localhost",
-
-    // Your port; if not 3306
     port: 3306,
-
-    // Your username
     user: "root",
-
-    // Your password
     password: "root",
     database: "bamazon_db"
 });
+
+// Starting MYSQL connections that calls start() function
 connection.connect(function (err) {
     if (err) throw err;
 
     console.log("Welcome to Bamazon");
-    start();
-    
+    start();  
 });
 var inventoryArray = [];
-var stockQuanity = "";
-var total = 0;
-var productName = "";
+
+
 //Function for creating product array and printing to console.
 function start() {
     connection.query("SELECT * FROM products", function (err, results) {
@@ -37,27 +33,29 @@ function start() {
                 };
                 inventoryArray.push(listItem);  
             }
-           printInventory();
+           printInventory(inventoryArray);
            productSelection();
         };
         return makeArray();  
     });
-};  
-    var printInventory = function () {
-        for (var i = 0; i < inventoryArray.length; i++) {
+}; 
+
+//Function to print inventory to screen
+    var printInventory = function (array) {
+        for (var i = 0; i < array.length; i++) {
             var display = [
                     "------------------------------------------------------------",
-                    "Product ID: " + inventoryArray[i].id,
-                    "Product Name: " + inventoryArray[i].name,
-                    "Price: " + inventoryArray[i].price,
+                    "Product ID: " + array[i].id,
+                    "Product Name: " + array[i].name,
+                    "Price: " + array[i].price,
                     "------------------------------------------------------------"
                 ].join("\n");
                 console.log(display);
         }
     };
-   
-          
-    var productSelection = function() {
+
+ //Inquiry to prompt user to select a product for sale   
+ var productSelection = function() {
         inquirer
             .prompt([
 
@@ -80,19 +78,16 @@ function start() {
             ])
             .then(function (answer) {
                 connection.query("SELECT * FROM products", function (err, results) {
-                   var getSql = function(){ 
-                    stockQuanity = results[answer.purchaseId - 1].stock_quantity;
-                    total = answer.quantity * results[answer.purchaseId - 1].price;
-                    productName = results[answer.purchaseId - 1].product_name
-                    fullfillOrder();
+                   var getSql = function(answer, results){ 
+                    fullfillOrder(answer, results);
                 };
-                return getSql();
+                return getSql(answer, results);
 
                 });
        
-            
-        var updateInventory = function() {  
-            var newQuantity = parseInt(stockQuanity - answer.quantity);
+        //Function to update inventory on MYSQL    
+        var updateInventory = function(answers,results) {  
+            var newQuantity = parseInt(results[answer.purchaseId - 1].stock_quantity - answer.quantity);
             var idToFind = parseInt(answer.purchaseId);
             console.log("New Stock Quantity: " + newQuantity);
            
@@ -113,20 +108,18 @@ function start() {
 
             });
         };
-            
-        var fullfillOrder = function(){
-            console.log(stockQuanity);
-            if(answer.quantity < stockQuanity){
-                console.log("\nThank you for purchasing " + answer.quantity + " of the " + productName + "! Your total is: " + total);
-                updateInventory();
+        // Function to fullfill order by checking quanitity to make sure the sale can go through.      
+        var fullfillOrder = function(answer,results){
+            if(answer.quantity < results[answer.purchaseId - 1].stock_quantity){
+                console.log("\nThank you for purchasing " + answer.quantity + " of the " + results[answer.purchaseId - 1].product_name + "! Your total is: " + answer.quantity * results[answer.purchaseId - 1].price);
+                updateInventory(answer,results);
              }
             else{
                  console.log( "Insufficient quantity!"); 
                  connection.end();
                
             }
-            };
-                  
+            };       
         });
     }   
 
